@@ -206,7 +206,7 @@ const MineSweeper: React.FC = () => {
         </button>
       </div>
       {showRules && (
-        <div className="mb-4 p-4 bg-gray-100 rounded max-w-md text-left">
+        <div className="mb-4 p-4 bg-gray-900 rounded max-w-md text-left">
           <h2 className="font-semibold mb-2">Rules</h2>
           <ul className="list-disc list-inside">
             <li>Left-click to open a cell. Mine = Loss.</li>
@@ -226,7 +226,7 @@ const MineSweeper: React.FC = () => {
             </ol>
           )}
         </div>
-        <div className="flex-1">
+        <div className="flex flex-col items-center w-5/8">
           <div className="mb-4">
             <span className="mr-4">Wins: {wins}</span>
             <span className="mr-4">Time: {Math.floor(time/60)}:{('0'+time%60).slice(-2)}</span>
