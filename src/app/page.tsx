@@ -215,8 +215,8 @@ const MineSweeper: React.FC = () => {
           </ul>
         </div>
       )}
-      <div className="flex w-full justify-center items-center gap-8">
-        <div className="w-1/4 text-center">
+      <div className="flex w-full justify-center items-center gap-8 pr-58">
+        <div className="w-1/5 text-center">
           <h2 className="font-semibold mb-2">Leaderboard ({difficulty})</h2>
           {mounted && (
             <ol className="list-decimal list-inside">
