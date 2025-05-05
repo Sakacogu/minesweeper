@@ -339,14 +339,14 @@ const MineSweeper: React.FC = () => {
             </ol>
             <label className="text-sm mb-1 block">Your name</label>
             <input
-              className="w-full px-2 py-1 rounded border text-sm text-black"
+              className="w-full px-2 py-1 rounded border text-sm text-white"
               value={inputName}
               onChange={(e) => setInputName(e.target.value)}
               onKeyDown={handleNameKey}
               placeholder="Your name"
             />
             {playerName && (
-              <p className="mt-2 text-center">Hi, {playerName}!</p>
+              <p className="mt-2 text-start">Hi, {playerName}!</p>
             )}
           </div>
         )}
