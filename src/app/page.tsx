@@ -290,9 +290,9 @@ const MineSweeper: React.FC = () => {
       <div className="relative w-full max-w-4xl">
 
         <div className="hidden lg:flex flex-col absolute right-0 items-end">
-          <label className="text-sm mb-1 text-white">Username</label>
+          <label className="text-sm mb-1 text-white self-start">Username</label>
           <input
-            className="px-2 py-1 rounded border text-sm"
+            className="px-2 py-1 rounded border text-sm self-center"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Your name"
