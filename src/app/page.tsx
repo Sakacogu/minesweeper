@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 const PRESETS = {
-  Easy: { size: 8, bombs: 10 },
+  Easy:   { size: 8,  bombs: 10 },
   Medium: { size: 10, bombs: 15 },
-  Hard: { size: 12, bombs: 20 },
-};
+  Hard:   { size: 12, bombs: 20 },
+} as const;
 
 type CellType = {
   index: number;
@@ -16,18 +16,18 @@ type CellType = {
   isFlagged: boolean;
 };
 
-const generateBombs = (size: number, count: number): number[] => {
+const generateBombs = (size: number, count: number) => {
   const bombs: number[] = [];
   while (bombs.length < count) {
-    const pos = Math.floor(Math.random() * size * size);
-    if (!bombs.includes(pos)) bombs.push(pos);
+    const p = Math.floor(Math.random() * size * size);
+    if (!bombs.includes(p)) bombs.push(p);
   }
   return bombs;
 };
 
-const generateCells = (size: number, bombs: number[]): CellType[] => {
+const generateCells = (size: number, bombs: number[]) => {
   const cells: CellType[] = [];
-  for (let i = 0; i < size * size; i++) {
+  for (let i = 0; i < size * size; i++)
     cells.push({
       index: i,
       isRevealed: false,
@@ -35,216 +35,313 @@ const generateCells = (size: number, bombs: number[]): CellType[] => {
       neighborCount: 0,
       isFlagged: false,
     });
-  }
-  cells.forEach(cell => {
+
+  cells.forEach((cell) => {
     if (cell.isMine) return;
     const r = Math.floor(cell.index / size);
     const c = cell.index % size;
-    let count = 0;
-    for (let dr = -1; dr <= 1; dr++) {
+    let cnt = 0;
+    for (let dr = -1; dr <= 1; dr++)
       for (let dc = -1; dc <= 1; dc++) {
-        const nr = r + dr;
-        const nc = c + dc;
-        if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
-          if (bombs.includes(nr * size + nc)) count++;
-        }
+        const nr = r + dr, nc = c + dc;
+        if (
+          nr >= 0 && nr < size &&
+          nc >= 0 && nc < size &&
+          bombs.includes(nr * size + nc)
+        ) cnt++;
       }
-    }
-    cell.neighborCount = count;
+    cell.neighborCount = cnt;
   });
+
   return cells;
 };
 
+const computeTile = (size: number) =>
+  window.innerWidth < 740 ? Math.floor(320 / size) : Math.floor(480 / size);
+
 const MineSweeper: React.FC = () => {
   const [difficulty, setDifficulty] = useState<keyof typeof PRESETS>("Medium");
-  const { size: BOARD_SIZE, bombs: BOMB_COUNT } = PRESETS[difficulty];
+  const [boardSize, setBoardSize]  = useState(PRESETS[difficulty].size);
+  const [cells, setCells]          = useState<CellType[]>([]);
+  const [wins, setWins]            = useState(0);
+  const [time, setTime]            = useState(0);
+  const [points, setPoints]        = useState(0);
+  const [started, setStarted]      = useState(false);
+  const [gameEnded, setGameEnded]  = useState(false);
 
-  const [cells, setCells] = useState<CellType[]>([]);
-  const [gameEnded, setGameEnded] = useState(false);
-  const [showRules, setShowRules] = useState(false);
-  const [wins, setWins] = useState(0);
-  const [time, setTime] = useState(0);
-  const [points, setPoints] = useState(0);
-  const [started, setStarted] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [showRules, setShowRules]       = useState(false);
+  const [tile, setTile]                 = useState(40);
+  const [lbMobileOpen, setLbMobileOpen] = useState(false);
 
-  const timerRef = useRef<number | null>(null);
-  const [leaderboard, setLeaderboard] = useState<Record<string, number[]>>({});
+  const timerRef           = useRef<number | null>(null);
+  const [leaderboard, setLeaderboard]   = useState<Record<string, number[]>>({});
+  const [hydrated, setHydrated]         = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    const stored = localStorage.getItem("msLeaderboard");
-    if (stored) {
-      try { setLeaderboard(JSON.parse(stored)); } catch {}
-    }
+    const update = () => setTile(computeTile(boardSize));
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [boardSize]);
+
+  useEffect(() => {
+    setHydrated(true);
+    try {
+      const stored = localStorage.getItem("msLeaderboard");
+      if (stored) setLeaderboard(JSON.parse(stored));
+    } catch {}
     initGame();
   }, []);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem("msLeaderboard", JSON.stringify(leaderboard));
-  }, [leaderboard, mounted]);
-
-  const initGame = (diff?: keyof typeof PRESETS) => {
-    const d = diff || difficulty;
-    setDifficulty(d);
-    const { size, bombs } = PRESETS[d];
-    const bPositions = generateBombs(size, bombs);
-    setCells(generateCells(size, bPositions));
-    setGameEnded(false);
-    setTime(0);
-    setStarted(false);
-  };
+    if (hydrated)
+      localStorage.setItem("msLeaderboard", JSON.stringify(leaderboard));
+  }, [leaderboard, hydrated]);
 
   useEffect(() => {
-    if (timerRef.current !== null) clearInterval(timerRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
     if (started && !gameEnded) {
       timerRef.current = window.setInterval(() => {
-        setTime(prev => {
-          const nt = prev + 1;
-          if (nt % 15 === 0) setPoints(p => p - 1);
+        setTime((t) => {
+          const nt = t + 1;
+          if (nt % 15 === 0) setPoints((p) => p - 1);
           return nt;
         });
       }, 1000);
     }
-    return () => { if (timerRef.current !== null) clearInterval(timerRef.current); };
+    return () => timerRef.current && clearInterval(timerRef.current);
   }, [started, gameEnded]);
 
-  const revealEmpty = (arr: CellType[], idx: number): CellType[] => {
-    const newCells = arr.map(c => ({ ...c }));
+  const initGame = (diff?: keyof typeof PRESETS) => {
+    const d = diff || difficulty;
+    setDifficulty(d);
+    const size = PRESETS[d].size;
+    setBoardSize(size);
+    setCells(generateCells(size, generateBombs(size, PRESETS[d].bombs)));
+    setTime(0);
+    setPoints(0);
+    setStarted(false);
+    setGameEnded(false);
+    setLbMobileOpen(false);
+  };
+
+  const revealEmpty = (grid: CellType[], idx: number, size: number) => {
+    const nc = grid.map((c) => ({ ...c }));
     const stack = [idx];
     while (stack.length) {
       const i = stack.pop()!;
-      const cell = newCells[i];
-      if (cell.isRevealed) continue;
-      cell.isRevealed = true;
-      cell.isFlagged = false;
-      if (cell.neighborCount === 0) {
-        const r = Math.floor(i / BOARD_SIZE);
-        const c = i % BOARD_SIZE;
-        for (let dr = -1; dr <= 1; dr++) {
+      if (nc[i].isRevealed) continue;
+      nc[i].isRevealed = true;
+      nc[i].isFlagged  = false;
+
+      if (nc[i].neighborCount === 0) {
+        const r = Math.floor(i / size);
+        const c = i % size;
+        for (let dr = -1; dr <= 1; dr++)
           for (let dc = -1; dc <= 1; dc++) {
-            const nr = r + dr;
-            const nc = c + dc;
-            if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
-              const ni = nr * BOARD_SIZE + nc;
-              if (!newCells[ni].isRevealed) stack.push(ni);
+            const nr = r + dr, nc_ = c + dc;
+            if (nr >= 0 && nr < size && nc_ >= 0 && nc_ < size) {
+              const ni = nr * size + nc_;
+              if (ni < nc.length && !nc[ni].isRevealed) stack.push(ni);
             }
           }
-        }
       }
     }
-    return newCells;
+    return nc;
   };
 
-  const checkWin = (arr: CellType[]) => arr.every(c => c.isRevealed || c.isMine);
+  const checkWin = (arr: CellType[]) =>
+    arr.every((c) => c.isRevealed || c.isMine);
 
   const endGame = (won: boolean) => {
     setGameEnded(true);
+    const bonus = PRESETS[difficulty].bombs * 10;
     if (won) {
-      const bonus = BOMB_COUNT * 10;
-      setPoints(p => p + bonus);
-      setWins(w => w + 1);
-      alert(`You Won! +${bonus} bonus points.`);
+      setPoints((p) => p + bonus);
+      setWins((w) => w + 1);
     } else {
-      const curr = points;
-      const scores = leaderboard[difficulty] || [];
-      const updated = [curr, ...scores].sort((a,b) => b - a).slice(0,5);
-      setLeaderboard(lb => ({ ...lb, [difficulty]: updated }));
-      alert("Game Over! Score recorded.");
+      const scores  = leaderboard[difficulty] || [];
+      const updated = [points, ...scores].sort((a, b) => b - a).slice(0, 5);
+      setLeaderboard((lb) => ({ ...lb, [difficulty]: updated }));
       setPoints(0);
-      setCells(arr => arr.map(c => ({ ...c, isRevealed: c.isMine || c.isRevealed })));
+      setCells((g) =>
+        g.map((c) => ({ ...c, isRevealed: c.isMine || c.isRevealed }))
+      );
     }
   };
 
   const revealCell = (idx: number) => {
     if (gameEnded) return;
     if (!started) setStarted(true);
-    const beforeCount = cells.filter(c => c.isRevealed).length;
+
     const cell = cells[idx];
     if (cell.isRevealed) return;
+
     if (cell.isMine) {
       endGame(false);
-    } else {
-      const updated = cell.neighborCount > 0
-        ? cells.map(c => c.index === idx ? { ...c, isRevealed: true } : c)
-        : revealEmpty(cells, idx);
-      setCells(updated);
-      const afterCount = updated.filter(c => c.isRevealed).length;
-      setPoints(p => p + (afterCount - beforeCount));
-      if (checkWin(updated)) endGame(true);
+      return;
     }
+
+    const before = cells.filter((c) => c.isRevealed).length;
+
+    const updated =
+      cell.neighborCount > 0
+        ? cells.map((c) =>
+            c.index === idx ? { ...c, isRevealed: true } : c
+          )
+        : revealEmpty(cells, idx, boardSize);
+
+    setCells(updated);
+    const after = updated.filter((c) => c.isRevealed).length;
+    setPoints((p) => p + (after - before));
+
+    if (checkWin(updated)) endGame(true);
   };
 
   const toggleFlag = (e: React.MouseEvent, idx: number) => {
     e.preventDefault();
     if (gameEnded) return;
     if (!started) setStarted(true);
-    setCells(arr => arr.map(c =>
-      c.index === idx && !c.isRevealed ? { ...c, isFlagged: !c.isFlagged } : c
-    ));
+    setCells((g) =>
+      g.map((c) =>
+        c.index === idx && !c.isRevealed
+          ? { ...c, isFlagged: !c.isFlagged }
+          : c
+      )
+    );
   };
 
   return (
     <div
-      className="flex flex-col justify-center items-center p-8 min-h-screen"
-      style={{ background: 'conic-gradient(from 180deg at 50% 50%, #ec4899, #8b5cf6, #6366f1, #ec4899)' }}
+      className="flex flex-col items-center p-4 sm:p-8 min-h-screen"
+      style={{
+        background:
+          "conic-gradient(from 180deg at 50% 50%, #ec4899, #8b5cf6, #6366f1, #ec4899)",
+      }}
     >
-      <h1 className="text-3xl font-bold mb-4">Minesweeper</h1>
-      <div className="flex justify-center gap-2 mb-4">
-        {Object.keys(PRESETS).map(diff => (
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4">Minesweeper</h1>
+
+      {/* difficulty */}
+      <div className="flex gap-2 flex-wrap justify-center mb-2">
+        {(Object.keys(PRESETS) as (keyof typeof PRESETS)[]).map((d) => (
           <button
-            key={diff}
-            onClick={() => initGame(diff as keyof typeof PRESETS)}
-            className={`px-3 py-1 rounded ${difficulty === diff ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}
-          >{diff}</button>
+            key={d}
+            onClick={() => initGame(d)}
+            className={`px-3 py-1 rounded ${
+              difficulty === d
+                ? "bg-green-500 text-white"
+                : "bg-gray-500 text-white"
+            }`}
+          >
+            {d}
+          </button>
         ))}
       </div>
-      <div className="flex justify-center gap-2 mb-4">
-        <button onClick={() => initGame()} className="px-4 py-2 bg-blue-500 text-white rounded">Restart</button>
-        <button onClick={() => setShowRules(r => !r)} className="px-4 py-2 bg-gray-500 text-white rounded">
-          {showRules ? 'Hide Rules' : 'Show Rules'}
+
+      <div className="flex gap-2 justify-center mb-4">
+        <button
+          onClick={() => initGame()}
+          className="px-4 py-1 bg-blue-500 text-white rounded"
+        >
+          Restart
+        </button>
+        <button
+          onClick={() => setShowRules((r) => !r)}
+          className="px-4 py-1 bg-gray-500 text-white rounded"
+        >
+          {showRules ? "Hide Rules" : "Show Rules"}
+        </button>
+        <button
+          className="sm:hidden px-4 py-1 bg-purple-600 text-white rounded"
+          onClick={() => setLbMobileOpen((o) => !o)}
+        >
+          {lbMobileOpen ? "Hide Scores" : "Show Scores"}
         </button>
       </div>
+
       {showRules && (
-        <div className="mb-4 p-4 bg-gray-900 rounded max-w-md text-left">
+        <div className="mb-4 p-4 bg-gray-900 text-white rounded max-w-md">
           <h2 className="font-semibold mb-2">Rules</h2>
-          <ul className="list-disc list-inside">
-            <li>Left-click to open a cell. Mine = Loss.</li>
-            <li>Numbers show adjacent mines; 0 auto-opens neighbors.</li>
-            <li>Right-click to flag/unflag. Flags can be cleared by opening.</li>
+          <ul className="list-disc list-inside text-sm sm:text-base">
+            <li>Left‑click reveals a cell.</li>
+            <li>Right‑click flags/unflags a suspected mine.</li>
+            <li>Numbers show adjacent mines; blanks auto‑expand.</li>
           </ul>
         </div>
       )}
-      <div className="flex w-full justify-center items-center gap-8 pr-58">
-        <div className="w-1/5 text-center">
-          <h2 className="font-semibold mb-2">Leaderboard ({difficulty})</h2>
-          {mounted && (
-            <ol className="list-decimal list-inside">
-              {(leaderboard[difficulty] || []).map((score, i) => (
-                <li key={i}>{score} pts</li>
+
+      <div className="relative w-full max-w-4xl">
+        <div className="hidden sm:block absolute left-0">
+          <h2 className="font-semibold mb-2">
+            Leaderboard ({difficulty})
+          </h2>
+          <ol className="list-decimal list-inside text-sm">
+            {(leaderboard[difficulty] || []).map((s, i) => (
+              <li key={i}>{s} pts</li>
+            ))}
+          </ol>
+        </div>
+
+        {lbMobileOpen && (
+          <div className="sm:hidden absolute left-1/2 -translate-x-1/2 z-10 bg-gray-800 text-white p-4 rounded shadow-lg">
+            <h2 className="font-semibold mb-2 text-center">Top Scores</h2>
+            <ol className="list-decimal list-inside text-sm">
+              {(leaderboard[difficulty] || []).map((s, i) => (
+                <li key={i}>{s} pts</li>
               ))}
             </ol>
-          )}
-        </div>
-        <div className="flex flex-col items-center w-5/8">
-          <div className="mb-4">
-            <span className="mr-4">Wins: {wins}</span>
-            <span className="mr-4">Time: {Math.floor(time/60)}:{('0'+time%60).slice(-2)}</span>
+          </div>
+        )}
+
+        <div className="mx-auto" style={{ width: boardSize * tile }}>
+          <div className="mb-2 text-center flex justify-between text-xs sm:text-sm">
+            <span>Wins: {wins}</span>
+            <span>
+              Time: {Math.floor(time / 60)}:
+              {("0" + (time % 60)).slice(-2)}
+            </span>
             <span>Points: {points}</span>
           </div>
-          <div className="inline-grid" style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 40px)` }}>
-            {cells.map(cell => (
+
+          <div
+            className="grid"
+            style={{
+              gridTemplateColumns: `repeat(${boardSize}, ${tile}px)`,
+              gridTemplateRows: `repeat(${boardSize}, ${tile}px)`,
+            }}
+          >
+            {cells.map((cell) => (
               <div
                 key={cell.index}
                 onClick={() => revealCell(cell.index)}
-                onContextMenu={e => toggleFlag(e, cell.index)}
-                className={`w-10 h-10 border flex items-center justify-center cursor-pointer select-none ${cell.isRevealed ? 'bg-gray-200 text-black' : 'bg-gray-400'} ${cell.isMine && cell.isRevealed ? 'bg-red-500 text-white' : ''}`}
+                onContextMenu={(e) => toggleFlag(e, cell.index)}
+                className={`
+                  border flex items-center justify-center select-none cursor-pointer
+                  text-xs sm:text-base
+                  ${
+                    cell.isRevealed
+                      ? "bg-gray-200 text-black"
+                      : "bg-gray-400 text-black"
+                  }
+                  ${cell.isMine && cell.isRevealed ? "bg-red-500 text-white" : ""}
+                `}
               >
-                {cell.isRevealed ? (cell.isMine ? '💣' : cell.neighborCount || '') : (cell.isFlagged ? '🚩' : '')}
+                {cell.isRevealed
+                  ? cell.isMine
+                    ? "💣"
+                    : cell.neighborCount || ""
+                  : cell.isFlagged
+                  ? "🚩"
+                  : ""}
               </div>
             ))}
           </div>
-          {gameEnded && <div className="mt-4 font-semibold text-xl">{checkWin(cells) ? 'You Won! 🎉' : 'Game Over 💥'}</div>}
+
+          {gameEnded && (
+            <div className="mt-4 text-center font-semibold">
+              {checkWin(cells) ? "You Won! 🎉" : "Game Over 💥"}
+            </div>
+          )}
         </div>
       </div>
     </div>
