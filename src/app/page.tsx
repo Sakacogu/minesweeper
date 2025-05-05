@@ -83,11 +83,11 @@ const MineSweeper: React.FC = () => {
   const [playerName, setPlayerName] = useState("");
   const [inputName, setInputName]   = useState("");
 
-  const timerRef           = useRef<number | null>(null);
-  const [leaderboard, setLeaderboard]   = useState<Record<string, LBEntry[]>>(
-    {}
-  );
-  const [hydrated, setHydrated]         = useState(false);
+  /* misc */
+  const timerRef = useRef<number | null>(null);
+  const [leaderboard, setLeaderboard] =
+    useState<Record<string, LBEntry[]>>({});
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const update = () => setTile(computeTile(boardSize));
@@ -101,8 +101,6 @@ const MineSweeper: React.FC = () => {
     try {
       const storedLB = localStorage.getItem("msLeaderboard");
       if (storedLB) setLeaderboard(JSON.parse(storedLB));
-      const storedName = localStorage.getItem("msUsername");
-      if (storedName) setPlayerName(storedName);
     } catch {}
     initGame();
   }, []);
@@ -111,10 +109,6 @@ const MineSweeper: React.FC = () => {
     if (hydrated)
       localStorage.setItem("msLeaderboard", JSON.stringify(leaderboard));
   }, [leaderboard, hydrated]);
-
-  useEffect(() => {
-    if (hydrated) localStorage.setItem("msUsername", playerName);
-  }, [playerName, hydrated]);
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -140,6 +134,7 @@ const MineSweeper: React.FC = () => {
     setPoints(0);
     setStarted(false);
     setGameEnded(false);
+    setLastWin(false);
     setLbMobileOpen(false);
   };
 
@@ -150,7 +145,7 @@ const MineSweeper: React.FC = () => {
       const i = stack.pop()!;
       if (nc[i].isRevealed) continue;
       nc[i].isRevealed = true;
-      nc[i].isFlagged  = false;
+      nc[i].isFlagged = false;
 
       if (nc[i].neighborCount === 0) {
         const r = Math.floor(i / size);
@@ -180,7 +175,7 @@ const MineSweeper: React.FC = () => {
       setWins((w) => w + 1);
     } else {
       const entry: LBEntry = { name: playerName || "Anonymous", score: points };
-      const scores  = leaderboard[difficulty] || [];
+      const scores = leaderboard[difficulty] || [];
       const updated = [entry, ...scores]
         .sort((a, b) => b.score - a.score)
         .slice(0, 5);
@@ -233,11 +228,14 @@ const MineSweeper: React.FC = () => {
     );
   };
 
-  const handleNameKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && inputName.trim()) {
+  const submitName = () => {
+    if (inputName.trim()) {
       setPlayerName(inputName.trim());
       setInputName("");
     }
+  };
+  const handleNameKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") submitName();
   };
 
   return (
@@ -271,7 +269,7 @@ const MineSweeper: React.FC = () => {
           onClick={() => initGame()}
           className="px-4 py-1 bg-blue-500 text-white rounded"
         >
-         {gameEnded && lastWin ? "Keep going" : "Restart"}
+          {gameEnded && lastWin ? "Keep going" : "Restart"}
         </button>
         <button
           onClick={() => setShowRules((r) => !r)}
@@ -298,26 +296,34 @@ const MineSweeper: React.FC = () => {
         </div>
       )}
 
-      <div className="relative w-full max-w-4xl">
+      <div className="w-full max-w-4xl">
 
-        <div className="hidden lg:flex flex-col absolute right-0 items-end">
+        <div className="hidden lg:flex flex-col absolute right-0 items-end pr-8">
           <label className="text-sm mb-1 text-white self-start">Username</label>
-          <input
-            className="px-2 py-1 rounded border text-sm"
-            value={inputName}
-            onChange={(e) => setInputName(e.target.value)}
-            onKeyDown={handleNameKey}
-            placeholder="Your name"
-          />
+          <div className="flex">
+            <input
+              className="px-2 py-1 rounded border text-sm"
+              value={inputName}
+              onChange={(e) => setInputName(e.target.value)}
+              onKeyDown={handleNameKey}
+              placeholder="Your name"
+            />
+            <button
+              onClick={submitName}
+              className="ml-1 px-2 py-1 bg-green-500 text-white text-sm rounded"
+            >
+              Enter
+            </button>
+          </div>
           {playerName && (
-            <span className="text-sm mt-1 text-white self-start">Hi, {playerName}!</span>
+            <span className="text-sm mt-1 text-white self-start">
+              Hi, {playerName}!
+            </span>
           )}
         </div>
 
-        <div className="hidden lg:block absolute left-0">
-          <h2 className="font-semibold mb-2">
-            Leaderboard ({difficulty})
-          </h2>
+        <div className="hidden lg:block absolute left-8">
+          <h2 className="font-semibold mb-2">Leaderboard ({difficulty})</h2>
           <ol className="list-decimal list-inside text-sm">
             {(leaderboard[difficulty] || []).map((s, i) => (
               <li key={i}>
@@ -337,14 +343,22 @@ const MineSweeper: React.FC = () => {
                 </li>
               ))}
             </ol>
-            <label className="text-sm mb-1 block">Your name</label>
-            <input
-              className="w-full px-2 py-1 rounded border text-sm text-white"
-              value={inputName}
-              onChange={(e) => setInputName(e.target.value)}
-              onKeyDown={handleNameKey}
-              placeholder="Your name"
-            />
+            <label className="text-sm mb-1 block text-white">Your name</label>
+            <div className="flex">
+              <input
+                className="flex-1 px-2 py-1 rounded border text-sm text-white"
+                value={inputName}
+                onChange={(e) => setInputName(e.target.value)}
+                onKeyDown={handleNameKey}
+                placeholder="Your name"
+              />
+              <button
+                onClick={submitName}
+                className="ml-1 px-2 py-1 bg-green-500 text-white text-sm rounded"
+              >
+                Enter
+              </button>
+            </div>
             {playerName && (
               <p className="mt-2 text-start">Hi, {playerName}!</p>
             )}
