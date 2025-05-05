@@ -74,6 +74,7 @@ const MineSweeper: React.FC = () => {
   const [points, setPoints]        = useState(0);
   const [started, setStarted]      = useState(false);
   const [gameEnded, setGameEnded]  = useState(false);
+  const [lastWin, setLastWin]       = useState(false); 
 
   const [showRules, setShowRules]       = useState(false);
   const [tile, setTile]                 = useState(40);
@@ -172,6 +173,7 @@ const MineSweeper: React.FC = () => {
 
   const endGame = (won: boolean) => {
     setGameEnded(true);
+    setLastWin(won);
     const bonus = PRESETS[difficulty].bombs * 10;
     if (won) {
       setPoints((p) => p + bonus);
@@ -269,7 +271,7 @@ const MineSweeper: React.FC = () => {
           onClick={() => initGame()}
           className="px-4 py-1 bg-blue-500 text-white rounded"
         >
-          Restart
+         {gameEnded && lastWin ? "Keep going" : "Restart"}
         </button>
         <button
           onClick={() => setShowRules((r) => !r)}
