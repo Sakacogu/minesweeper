@@ -78,7 +78,9 @@ const MineSweeper: React.FC = () => {
   const [showRules, setShowRules]       = useState(false);
   const [tile, setTile]                 = useState(40);
   const [lbMobileOpen, setLbMobileOpen] = useState(false);
-  const [username, setUsername]         = useState("");
+
+  const [playerName, setPlayerName] = useState("");
+  const [inputName, setInputName]   = useState("");
 
   const timerRef           = useRef<number | null>(null);
   const [leaderboard, setLeaderboard]   = useState<Record<string, LBEntry[]>>(
@@ -99,7 +101,7 @@ const MineSweeper: React.FC = () => {
       const storedLB = localStorage.getItem("msLeaderboard");
       if (storedLB) setLeaderboard(JSON.parse(storedLB));
       const storedName = localStorage.getItem("msUsername");
-      if (storedName) setUsername(storedName);
+      if (storedName) setPlayerName(storedName);
     } catch {}
     initGame();
   }, []);
@@ -110,8 +112,8 @@ const MineSweeper: React.FC = () => {
   }, [leaderboard, hydrated]);
 
   useEffect(() => {
-    if (hydrated) localStorage.setItem("msUsername", username);
-  }, [username, hydrated]);
+    if (hydrated) localStorage.setItem("msUsername", playerName);
+  }, [playerName, hydrated]);
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -175,7 +177,7 @@ const MineSweeper: React.FC = () => {
       setPoints((p) => p + bonus);
       setWins((w) => w + 1);
     } else {
-      const entry: LBEntry = { name: username || "Anonymous", score: points };
+      const entry: LBEntry = { name: playerName || "Anonymous", score: points };
       const scores  = leaderboard[difficulty] || [];
       const updated = [entry, ...scores]
         .sort((a, b) => b.score - a.score)
@@ -227,6 +229,13 @@ const MineSweeper: React.FC = () => {
           : c
       )
     );
+  };
+
+  const handleNameKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && inputName.trim()) {
+      setPlayerName(inputName.trim());
+      setInputName("");
+    }
   };
 
   return (
@@ -292,11 +301,15 @@ const MineSweeper: React.FC = () => {
         <div className="hidden lg:flex flex-col absolute right-0 items-end">
           <label className="text-sm mb-1 text-white self-start">Username</label>
           <input
-            className="px-2 py-1 rounded border text-sm self-center"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            className="px-2 py-1 rounded border text-sm"
+            value={inputName}
+            onChange={(e) => setInputName(e.target.value)}
+            onKeyDown={handleNameKey}
             placeholder="Your name"
           />
+          {playerName && (
+            <span className="text-sm mt-1 text-white self-start">Hi, {playerName}!</span>
+          )}
         </div>
 
         <div className="hidden lg:block absolute left-0">
@@ -325,10 +338,14 @@ const MineSweeper: React.FC = () => {
             <label className="text-sm mb-1 block">Your name</label>
             <input
               className="w-full px-2 py-1 rounded border text-sm text-black"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={inputName}
+              onChange={(e) => setInputName(e.target.value)}
+              onKeyDown={handleNameKey}
               placeholder="Your name"
             />
+            {playerName && (
+              <p className="mt-2 text-center">Hi, {playerName}!</p>
+            )}
           </div>
         )}
 
