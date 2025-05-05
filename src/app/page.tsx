@@ -16,6 +16,8 @@ type CellType = {
   isFlagged: boolean;
 };
 
+type LBEntry = { name: string; score: number };
+
 const generateBombs = (size: number, count: number) => {
   const bombs: number[] = [];
   while (bombs.length < count) {
@@ -43,12 +45,16 @@ const generateCells = (size: number, bombs: number[]) => {
     let cnt = 0;
     for (let dr = -1; dr <= 1; dr++)
       for (let dc = -1; dc <= 1; dc++) {
-        const nr = r + dr, nc = c + dc;
+        const nr = r + dr,
+          nc = c + dc;
         if (
-          nr >= 0 && nr < size &&
-          nc >= 0 && nc < size &&
+          nr >= 0 &&
+          nr < size &&
+          nc >= 0 &&
+          nc < size &&
           bombs.includes(nr * size + nc)
-        ) cnt++;
+        )
+          cnt++;
       }
     cell.neighborCount = cnt;
   });
@@ -72,9 +78,12 @@ const MineSweeper: React.FC = () => {
   const [showRules, setShowRules]       = useState(false);
   const [tile, setTile]                 = useState(40);
   const [lbMobileOpen, setLbMobileOpen] = useState(false);
+  const [username, setUsername]         = useState("");
 
   const timerRef           = useRef<number | null>(null);
-  const [leaderboard, setLeaderboard]   = useState<Record<string, number[]>>({});
+  const [leaderboard, setLeaderboard]   = useState<Record<string, LBEntry[]>>(
+    {}
+  );
   const [hydrated, setHydrated]         = useState(false);
 
   useEffect(() => {
@@ -87,8 +96,10 @@ const MineSweeper: React.FC = () => {
   useEffect(() => {
     setHydrated(true);
     try {
-      const stored = localStorage.getItem("msLeaderboard");
-      if (stored) setLeaderboard(JSON.parse(stored));
+      const storedLB = localStorage.getItem("msLeaderboard");
+      if (storedLB) setLeaderboard(JSON.parse(storedLB));
+      const storedName = localStorage.getItem("msUsername");
+      if (storedName) setUsername(storedName);
     } catch {}
     initGame();
   }, []);
@@ -97,6 +108,10 @@ const MineSweeper: React.FC = () => {
     if (hydrated)
       localStorage.setItem("msLeaderboard", JSON.stringify(leaderboard));
   }, [leaderboard, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem("msUsername", username);
+  }, [username, hydrated]);
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -160,8 +175,11 @@ const MineSweeper: React.FC = () => {
       setPoints((p) => p + bonus);
       setWins((w) => w + 1);
     } else {
+      const entry: LBEntry = { name: username || "Anonymous", score: points };
       const scores  = leaderboard[difficulty] || [];
-      const updated = [points, ...scores].sort((a, b) => b - a).slice(0, 5);
+      const updated = [entry, ...scores]
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
       setLeaderboard((lb) => ({ ...lb, [difficulty]: updated }));
       setPoints(0);
       setCells((g) =>
@@ -221,7 +239,6 @@ const MineSweeper: React.FC = () => {
     >
       <h1 className="text-2xl sm:text-3xl font-bold mb-4">Minesweeper</h1>
 
-      {/* difficulty */}
       <div className="flex gap-2 flex-wrap justify-center mb-2">
         {(Object.keys(PRESETS) as (keyof typeof PRESETS)[]).map((d) => (
           <button
@@ -252,7 +269,7 @@ const MineSweeper: React.FC = () => {
           {showRules ? "Hide Rules" : "Show Rules"}
         </button>
         <button
-          className="sm:hidden px-4 py-1 bg-purple-600 text-white rounded"
+          className="lg:hidden px-4 py-1 bg-purple-600 text-white rounded"
           onClick={() => setLbMobileOpen((o) => !o)}
         >
           {lbMobileOpen ? "Hide Scores" : "Show Scores"}
@@ -271,25 +288,47 @@ const MineSweeper: React.FC = () => {
       )}
 
       <div className="relative w-full max-w-4xl">
-        <div className="hidden sm:block absolute left-0">
+
+        <div className="hidden lg:flex flex-col absolute right-0 items-end">
+          <label className="text-sm mb-1 text-white">Username</label>
+          <input
+            className="px-2 py-1 rounded border text-sm"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Your name"
+          />
+        </div>
+
+        <div className="hidden lg:block absolute left-0">
           <h2 className="font-semibold mb-2">
             Leaderboard ({difficulty})
           </h2>
           <ol className="list-decimal list-inside text-sm">
             {(leaderboard[difficulty] || []).map((s, i) => (
-              <li key={i}>{s} pts</li>
+              <li key={i}>
+                {s.name} – {s.score} pts
+              </li>
             ))}
           </ol>
         </div>
 
         {lbMobileOpen && (
-          <div className="sm:hidden absolute left-1/2 -translate-x-1/2 z-10 bg-gray-800 text-white p-4 rounded shadow-lg">
-            <h2 className="font-semibold mb-2 text-center">Top Scores</h2>
-            <ol className="list-decimal list-inside text-sm">
+          <div className="lg:hidden absolute left-1/2 -translate-x-1/2 z-10 bg-gray-800 text-white p-4 rounded shadow-lg w-64">
+            <h2 className="font-semibold mb-2 text-center">Leaderboard</h2>
+            <ol className="list-decimal list-inside text-sm mb-4">
               {(leaderboard[difficulty] || []).map((s, i) => (
-                <li key={i}>{s} pts</li>
+                <li key={i}>
+                  {s.name} – {s.score} pts
+                </li>
               ))}
             </ol>
+            <label className="text-sm mb-1 block">Your name</label>
+            <input
+              className="w-full px-2 py-1 rounded border text-sm text-black"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Your name"
+            />
           </div>
         )}
 
@@ -297,8 +336,7 @@ const MineSweeper: React.FC = () => {
           <div className="mb-2 text-center flex justify-between text-xs sm:text-sm">
             <span>Wins: {wins}</span>
             <span>
-              Time: {Math.floor(time / 60)}:
-              {("0" + (time % 60)).slice(-2)}
+              Time: {Math.floor(time / 60)}:{("0" + (time % 60)).slice(-2)}
             </span>
             <span>Points: {points}</span>
           </div>
