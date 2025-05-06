@@ -335,8 +335,8 @@ const MineSweeper: React.FC = () => {
         <div className="mb-4 p-4 bg-gray-900 text-white rounded max-w-md">
           <h2 className="font-semibold mb-2">Rules</h2>
           <ul className="list-disc list-inside text-sm sm:text-base">
-            <li>Left‑click reveals a cell.</li>
-            <li>Right‑click/holding down flags/unflags a suspected mine.</li>
+            <li>Left-click reveals a cell.</li>
+            <li>Right-click/holding down flags/unflags a suspected mine.</li>
             <li>Numbers show adjacent mines; blanks auto‑expand.</li>
           </ul>
         </div>
