@@ -289,7 +289,7 @@ const MineSweeper: React.FC = () => {
       className="flex flex-col items-center p-4 sm:p-8 min-h-screen"
       style={{
         background:
-          "conic-gradient(from 180deg at 50% 50%, #ec4899, #8b5cf6, #6366f1, #ec4899)",
+          "conic-gradient(from 180deg at 50% 50%, #022c22, #1a2e05, #422006, #022c22)",
       }}
     >
       <h1 className="text-2xl sm:text-3xl font-bold mb-4">Minesweeper</h1>
