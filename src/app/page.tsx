@@ -121,17 +121,25 @@ const MineSweeper: React.FC = () => {
         });
       }, 1000);
     }
-    return () => timerRef.current && clearInterval(timerRef.current);
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
   }, [started, gameEnded]);
 
-  const initGame = (diff?: keyof typeof PRESETS) => {
+  const initGame = (
+    diff?: keyof typeof PRESETS,
+    preservePoints: boolean = false   
+  ) => {
     const d = diff || difficulty;
     setDifficulty(d);
     const size = PRESETS[d].size;
     setBoardSize(size);
     setCells(generateCells(size, generateBombs(size, PRESETS[d].bombs)));
     setTime(0);
-    setPoints(0);
+    if (!preservePoints) setPoints(0);
     setStarted(false);
     setGameEnded(false);
     setLastWin(false);
@@ -266,7 +274,7 @@ const MineSweeper: React.FC = () => {
 
       <div className="flex gap-2 justify-center mb-4">
         <button
-          onClick={() => initGame()}
+          onClick={() => initGame(undefined, lastWin)}
           className="px-4 py-1 bg-blue-500 text-white rounded"
         >
           {gameEnded && lastWin ? "Keep going" : "Restart"}
